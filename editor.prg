@@ -27,6 +27,7 @@ global
         "Programador: Julio A. Garcia Lopez:",
         "Graficos: Julio A. Garcia Lopez",
         "Agradecimientos especiales:",
+        "- Maria",
         "- Citec",
         ""
     ;
@@ -36,7 +37,7 @@ global
         unidad;
     end = 65536 dup (1, 0);
     fondo;
-
+    terrenoPoner=3;
 
 begin
     fpgMenus=load_fpg("fpg/sau2menu.fpg");
@@ -172,7 +173,7 @@ end;
 */
 function pantallaTexto(pointer arrayTextos)
 private
-    idTextos[64];
+    idTextos[64] = 64 dup (0);
     pulsado=0;
     idx;
     string tmp;
@@ -201,10 +202,7 @@ begin
     end;
 
     fade_off();
-    for( idx=0; idx<64, arrayTextos[idx]!=""; idx++)
-        delete_text(idTextos[idx]);
-        idx++;
-    end;
+    delete_text(all_text);
 
     while(fading)
         frame;
@@ -273,60 +271,124 @@ begin
     delete_text(txtId);
 end;
 
+
+/**
+Actualiza el mapa mostrado
+*/
 function putTiles(x,y)
 private
     i;
     j;
 begin
-    x=x / 64;
-    y=y / 64;
-
     from i = 0 to 16;
         from j = 0 to 16;
-            map_put(fpgTerreno, 99, mapa[j*16+i].terreno, j*64, i*64);
+            map_put(fpgTerreno, 99, mapa[i*256+j].terreno, j*64, i*64);
         end;
     end;
-
-    put_screen(fpgTerreno,99);
+    refresh_scroll(0);
+    //put_screen(fpgTerreno,99);
 end
 
+/**
+Pinta el area de los controles, por lo demas no hace nada
+*/
 process areaControles()
 begin
     file=fpgMenus;
     graph=4;
     x=512;
     y=384;
-    z=-99;
+    z=-90;
 
     while(not key(_esc))
         frame;
     end;
+
 end
 
 /**
    Peoceso principal del editor
 */
 function editor()
+private
+    tx=0;
+    ty=0;
+    txtX;
+    txtY;
+
 begin
     putTiles(0,0);
     areaControles();
 
+
+    txtX=write_int(fntMenus,15,750,3,&tx);
+    txtY=write_int(fntMenus,65,750,3,&ty);
+
+    start_scroll(0,fpgTerreno,98,99,0,3);
     file=fpgEdit;
     graph=1;
+
+    botonTerreno(64,690,1);
+    botonTerreno(128,690,2);
+    botonTerreno(192,690,3);
 
     fade_on();
     while(not key(_esc))
         if(mouse.y<600)
             x=mouse.x - (mouse.x mod 64);
             y=mouse.y - (mouse.y mod 64);
-        end;
 
+            if(x>16320)
+                x=16320;
+            end;
+
+            if(y>16320)
+                y=16320;
+            end;
+
+            tx=x/64;
+            ty=y/64;
+
+
+            if(mouse.left)
+                while(mouse.left)
+                    frame;
+                end;
+                mapa [ ty*256+tx ].terreno = terrenoPoner;
+                putTiles(tx,ty);
+            end;
+
+        end;
         frame;
     end;
 
     fade_off();
+    delete_text(txtX);
+    delete_text(txtY);
+    stop_scroll(0);
+    signal(type botonTerreno,s_kill);
+    signal(type areaControles,s_kill);
 end
 
+/**
+Selecciona el terreno a poner en el mapa
+*/
+process botonTerreno(x,y,graph)
+begin
+    file=fpgTerreno;
+    z=-91;
 
+    loop
+        if(terrenoPOner!=graph)
+            flags=4;
+        else
+            flags=0;
+        end
+        if(collision(type mouse) and mouse.left)
+            terrenoPoner=graph;
+        end;
+        frame;
+    end;
+end;
 
 
