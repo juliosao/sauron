@@ -1,5 +1,6 @@
-program editor;
+program sauroneditor;
 const
+    DIVCOMPAT=1;
     FONDOMENU=1;
 
     SAURONBASE=100;
@@ -7,8 +8,17 @@ const
 
     MOUSEBASE=200;
     COPYRIGHT="V 0.1  -  (c) 2020 Julio A. Garcia Lopez";
+
+    NADA=0;
+    NUEVOMAPA=1;
+    CARGARMAPA=2;
+    VERCREDITOS=3;
+    SALIR=4;
 global
     fpgMenus;
+    fpgEdit;
+    fpgTerreno;
+
     fntMenus;
     fntMediana;
 
@@ -17,19 +27,34 @@ global
         "Programador: Julio A. Garcia Lopez:",
         "Graficos: Julio A. Garcia Lopez",
         "Agradecimientos especiales:",
-        "- Citec"
+        "- Citec",
+        ""
     ;
+
+    struct mapa[65536]
+        terreno;
+        unidad;
+    end = 65536 dup (1, 0);
+    fondo;
+
 
 begin
     fpgMenus=load_fpg("fpg/sau2menu.fpg");
+    fpgEdit=load_fpg("fpg/sau2edit.fpg");
+    fpgTerreno=load_fpg("fpg/terrain.fpg");
     fntMenus=load_fnt("fnt/sauron.fnt");
     fntMediana=load_fnt("fnt/sauronm.fnt");
     set_mode(m1024x768);
     set_fps(30,0);
+    mouse.file=fpgMenus;
+    mouse.graph=200;
     intro();
     mainMenu();
 end;
 
+/**
+   Pone el efecto de fuego de detras de la intro
+*/
 process fondoIntro()
 private
     vx=5;
@@ -56,6 +81,9 @@ begin
     end;
 end;
 
+/**
+   Pone el logo de la intro
+*/
 function intro()
 private
     fintro;
@@ -81,6 +109,9 @@ begin
     frame;
 end;
 
+/**
+   Men� principal
+*/
 function mainMenu()
 private
     txtCopyright;
@@ -91,7 +122,7 @@ begin
     file = fpgMenus;
     mouse.graph = 200;
 
-    while(pulsado != 3)
+    loop
         put_screen(0, FONDOMENU);
         fade_on();
         while(fading)
@@ -100,9 +131,10 @@ begin
 
         idSauron = sauronMenu();
         txtCopyright = write(fntMenus,1020,760,5,COPYRIGHT);
-        botonMenu(512, 500, "Nueva Partida", 1, &pulsado);
-        botonMenu(512, 575, "Ver Creditos", 2, &pulsado);
-        botonMenu(512, 650, "Salir", 3, &pulsado);
+        botonMenu(512, 500, "Nuevo Mapa", NUEVOMAPA, &pulsado);
+        botonMenu(512, 570, "Cargar Mapa", CARGARMAPA, &pulsado);
+        botonMenu(512, 640, "Ver Creditos", VERCREDITOS, &pulsado);
+        botonMenu(512, 710, "Salir", SALIR, &pulsado);
 
         while(pulsado == 0)
             frame;
@@ -113,22 +145,32 @@ begin
             frame;
         end;
 
+        frame(0);
+        frame;
+        signal(idSauron,s_kill);
+        delete_text(txtCopyright);
+
         switch(pulsado)
-            case 2:
-                pantallaTexto(6,&TEXTOSCREDITOS);
-                frame(200);
-                pulsado=0;
+            case NUEVOMAPA:
+                editor();
+            end;
+            case VERCREDITOS:
+                pantallaTexto(&TEXTOSCREDITOS);
+            end;
+            case SALIR:
+                exit("Gracias por jugar!",0);
             end;
         end
 
-        signal(idSauron,s_kill);
-        delete_text(txtCopyright);
+        pulsado=0;
     end
 
 end;
 
-//Pone un array de textos en pantalla
-function pantallaTexto(numTextos,pointer arrayTextos)
+/**
+  Pone un array de textos en pantalla
+*/
+function pantallaTexto(pointer arrayTextos)
 private
     idTextos[64];
     pulsado=0;
@@ -137,19 +179,21 @@ private
 begin
     fade_on();
     botonMenu(512, 720, "Continuar", 1, &pulsado);
+
+    for( idx=0; idx<64, arrayTextos[idx]!=""; idx++)
+        /*
+        Debido a las sobrecargas de gemix, necesitamos hacer algo para reinterpretar el valor como cadena
+        En cambio, operaciones de este tipo en DIV son contraproducentes
+        */
+        if( DIVCOMPAT==0 )
+            idTextos[idx]=write(fntMediana,512,400+(idx*50),4,(arrayTextos[idx]+""));
+        else
+            idTextos[idx]=write(fntMediana,512,400+(idx*50),4,arrayTextos[idx]);
+        end;
+    end;
+
     while(fading)
         frame;
-    end;
-
-
-    idx=0;
-    if(numTextos>64)
-        numTextos=64;
-    end;
-
-    for( idx=0; idx<numTextos; idx++)
-        strlen(arrayTextos[idx]);
-        idTextos[idx]=write(fntMediana,512,400+(idx*50),4,(""+arrayTextos[idx]));
     end;
 
     while(pulsado==0)
@@ -157,8 +201,7 @@ begin
     end;
 
     fade_off();
-    idx=0;
-    while(idx < numTextos)
+    for( idx=0; idx<64, arrayTextos[idx]!=""; idx++)
         delete_text(idTextos[idx]);
         idx++;
     end;
@@ -168,8 +211,9 @@ begin
     end;
 end;
 
-
-
+/**
+   Ojo ardiente de los menus
+*/
 process sauronMenu()
 private
     animacion=0;
@@ -188,6 +232,17 @@ begin
 
 end;
 
+/**
+   Pone un boton en pantalla
+   Parametros:
+       x,y: Coordenadas
+       texto: Texto a poner
+       tag: Id del boton
+       dst: Puntero a la variable donde volcar el Id cuando el boton se pulse
+   Notas:
+       Cuando el boton es pulsado, se pone en dst el valor de tag.
+       Si en dst, en cualquier momento se pone cualquier valor distinto de 0, el bot�n finalizar� su ejecuci�n
+*/
 process botonMenu(x,y,texto,tag,pointer dst)
 private
     status=0;
@@ -217,6 +272,61 @@ begin
 
     delete_text(txtId);
 end;
+
+function putTiles(x,y)
+private
+    i;
+    j;
+begin
+    x=x / 64;
+    y=y / 64;
+
+    from i = 0 to 16;
+        from j = 0 to 16;
+            map_put(fpgTerreno, 99, mapa[j*16+i].terreno, j*64, i*64);
+        end;
+    end;
+
+    put_screen(fpgTerreno,99);
+end
+
+process areaControles()
+begin
+    file=fpgMenus;
+    graph=4;
+    x=512;
+    y=384;
+    z=-99;
+
+    while(not key(_esc))
+        frame;
+    end;
+end
+
+/**
+   Peoceso principal del editor
+*/
+function editor()
+begin
+    putTiles(0,0);
+    areaControles();
+
+    file=fpgEdit;
+    graph=1;
+
+    fade_on();
+    while(not key(_esc))
+        if(mouse.y<600)
+            x=mouse.x - (mouse.x mod 64);
+            y=mouse.y - (mouse.y mod 64);
+        end;
+
+        frame;
+    end;
+
+    fade_off();
+end
+
 
 
 
