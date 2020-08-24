@@ -51,7 +51,7 @@ begin
     mouse.graph=200;
     intro();
     mainMenu();
-end;
+end
 
 /**
    Pone el efecto de fuego de detras de la intro
@@ -190,24 +190,24 @@ begin
             idTextos[idx]=write(fntMediana,512,400+(idx*50),4,(arrayTextos[idx]+""));
         else
             idTextos[idx]=write(fntMediana,512,400+(idx*50),4,arrayTextos[idx]);
-        end;
-    end;
+        end
+    end
 
     while(fading)
         frame;
-    end;
+    end
 
     while(pulsado==0)
         frame;
-    end;
+    end
 
     fade_off();
     delete_text(all_text);
 
     while(fading)
         frame;
-    end;
-end;
+    end
+end
 
 /**
    Ojo ardiente de los menus
@@ -226,9 +226,9 @@ begin
         animacion = (animacion + 1) mod SAURONMAX;
         graph=SAURONBASE+animacion;
         frame(200);
-    end;
+    end
 
-end;
+end
 
 /**
    Pone un boton en pantalla
@@ -260,16 +260,16 @@ begin
                     graph = 300;
                     *dst=tag;
                     frame;
-                end;
+                end
             end
         else
             graph=300;
-        end;
+        end
 
-    end;
+    end
 
     delete_text(txtId);
-end;
+end
 
 
 /**
@@ -283,8 +283,8 @@ begin
     from i = 0 to 16;
         from j = 0 to 16;
             map_put(fpgTerreno, 99, mapa[(x+i)*256+(y+j)].terreno, j*64, i*64);
-        end;
-    end;
+        end
+    end
     refresh_scroll(0);
     //put_screen(fpgTerreno,99);
 end
@@ -302,19 +302,21 @@ begin
 
     while(not key(_esc))
         frame;
-    end;
+    end
 
 end
 
 /**
-   Peoceso principal del editor
+   Proceso principal del editor
 */
 function editor()
 private
     tx=0;
     ty=0;
+    tmp;
     txtX;
     txtY;
+    update=false;
 
 begin
     putTiles(0,0);
@@ -331,6 +333,7 @@ begin
     graph=1;
     ctype=c_scroll;
 
+
     botonTerreno(64,690,1);
     botonTerreno(128,690,2);
     botonTerreno(192,690,3);
@@ -339,42 +342,40 @@ begin
     while(not key(_esc))
         if(mouse.y<600)
 
-            x= mouse.x - (mouse.x mod 64) - scroll[0].x0;
-            y= mouse.y - (mouse.y mod 64) - scroll[0].y0;
+            if(key(_right) and scroll.x0<15360)
+                scroll.x0 += 64;
+                update=true;
+            end
+            if(key(_left) and scroll.x0>0 )
+                scroll.x0 -= 64;
+                update=true;
+            end
 
-            if(x>16320)
-                x=16320;
-            else
-                if(mouse.x > 1000)
-                    scroll[0].x0-=1;
-                end;
-            end;
-            if(x<0)
-                x=0;
-            end;
-
-            if(y>16320)
-                y=16320;
-            end;
-            if(y<0)
-                y=0;
-            end;
+            tmp = mouse.x - scroll[0].x0;
+            x= tmp - (tmp mod 64);
+            tmp = mouse.y - scroll[0].y0;
+            y= tmp - (tmp mod 64);
 
             tx=x/64;
             ty=y/64;
-
 
             if(mouse.left)
                 while(mouse.left)
                     frame;
                 end;
                 mapa [ ty*256+tx ].terreno = terrenoPoner;
-                putTiles(0,0);
-            end;
+                update=true;
+            end
 
-        end;
+
+            if(update)
+                putTiles(tx,ty);
+                update=false;
+            end
+
+        end
         frame;
-    end;
+    end
 
     fade_off();
     delete_text(txtX);
