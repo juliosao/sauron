@@ -37,7 +37,7 @@ global
         unidad;
     end = 65536 dup (1, 0);
     fondo;
-    terrenoPoner=3;
+    
 
 begin
     fpgMenus=load_fpg("fpg/sau2menu.fpg");
@@ -97,7 +97,7 @@ begin
     z=0;
 
     fintro=fondoIntro();
-    while(time<250 and not key(_enter) and not(key(_esc)))
+    while(time<250 and not key(_enter) and not key(_esc) and not mouse.left)
         time++;
         frame;
     end;
@@ -273,20 +273,31 @@ end
 
 
 /**
-Actualiza el mapa mostrado
+    Actualiza el mapa mostrado
+    Parametros:
+        x:
+        y:
 */
 function putTiles(x,y)
 private
     i;
     j;
 begin
-    from i = 0 to 16;
-        from j = 0 to 16;
-            map_put(fpgTerreno, 99, mapa[(x+i)*256+(y+j)].terreno, j*64, i*64);
+    from i = 0 to 16; // Filas
+        from j = 0 to 16; // Columnas
+            map_put(fpgTerreno, 99, mapa[(y+i)*256+(x+j)].terreno, j*64, i*64);
         end
     end
     refresh_scroll(0);
     //put_screen(fpgTerreno,99);
+end
+
+/**
+    Pone un terreno en el mapa
+*/
+function putTerrain(x,y,terrain)
+begin
+    mapa [ y*256+x ].terreno = terrain;
 end
 
 /**
@@ -317,6 +328,7 @@ private
     txtX;
     txtY;
     update=false;
+    terrenoPoner=3;
 
 begin
     putTiles(0,0);
@@ -327,53 +339,65 @@ begin
     txtY=write_int(fntMenus,65,750,3,&ty);
 
     define_region(1,0,0,1024,600);
-    start_scroll(0,fpgTerreno,98,99,1,3);
+    start_scroll(0,fpgTerreno,98,99,1,0);
 
     file=fpgEdit;
     graph=1;
-    ctype=c_scroll;
+    //ctype=c_scroll;
 
 
-    botonTerreno(64,690,1);
-    botonTerreno(128,690,2);
-    botonTerreno(192,690,3);
+    botonTerreno(64,690,1,&terrenoPoner);
+    botonTerreno(128,690,2,&terrenoPoner);
+    botonTerreno(192,690,3,&terrenoPoner);
 
     fade_on();
     while(not key(_esc))
+        if(key(_right) and scroll.x0<15360)
+            scroll[0].x0 += 64;
+            update=true;            
+            frame(300);            
+        end
+        
+        if(key(_left) and scroll.x0>0 )
+            scroll[0].x0 -= 64;
+            update=true;
+            frame(300);
+        end
+
+        if(key(_down) and scroll.y0<15360)
+            scroll[0].y0 += 64;
+            update=true;            
+            frame(300);            
+        end
+        
+        if(key(_up) and scroll.y0>0 )
+            scroll[0].y0 -= 64;
+            update=true;
+            frame(300);
+        end
+
         if(mouse.y<600)
-
-            if(key(_right) and scroll.x0<15360)
-                scroll.x0 += 64;
-                update=true;
-            end
-            if(key(_left) and scroll.x0>0 )
-                scroll.x0 -= 64;
-                update=true;
-            end
-
-            tmp = mouse.x - scroll[0].x0;
+            tmp = mouse.x;
             x= tmp - (tmp mod 64);
-            tmp = mouse.y - scroll[0].y0;
+            tmp = mouse.y;
             y= tmp - (tmp mod 64);
 
-            tx=x/64;
-            ty=y/64;
+            tx=(x+scroll.x0)/64;
+            ty=(y+scroll.y0)/64;
 
             if(mouse.left)
-                while(mouse.left)
-                    frame;
-                end;
-                mapa [ ty*256+tx ].terreno = terrenoPoner;
+                frame(300);
+                putTerrain(tx,ty,terrenoPoner);
                 update=true;
             end
-
-
-            if(update)
-                putTiles(tx,ty);
-                update=false;
-            end
-
         end
+
+        if(update)
+            putTiles(scroll.x0/64,scroll.y0/64);
+            update=false;
+            frame;
+        end
+
         frame;
     end
 
@@ -388,22 +412,22 @@ end
 /**
 Selecciona el terreno a poner en el mapa
 */
-process botonTerreno(x,y,graph)
+process botonTerreno(x,y,graph,pointer terrenoPoner)
 begin
     file=fpgTerreno;
     z=-91;
 
     loop
-        if(terrenoPOner!=graph)
+        if(*terrenoPOner!=graph)
             flags=4;
         else
             flags=0;
         end
         if(collision(type mouse) and mouse.left)
-            terrenoPoner=graph;
-        end;
+            *terrenoPoner=graph;
+        end
         frame;
-    end;
-end;
+    end
+end
 
 
