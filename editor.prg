@@ -1,6 +1,6 @@
 program sauroneditor;
 const
-    DIVCOMPAT=1;
+    DIVCOMPAT=0;
     FONDOMENU=1;
 
     SAURONBASE=100;
@@ -187,8 +187,6 @@ begin
         En cambio, operaciones de este tipo en DIV son contraproducentes
         */
         if( DIVCOMPAT==0 )
-            idTextos[idx]=write(fntMediana,512,400+(idx*50),4,(arrayTextos[idx]+""));
-        else
             idTextos[idx]=write(fntMediana,512,400+(idx*50),4,arrayTextos[idx]);
         end
     end
