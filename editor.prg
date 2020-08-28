@@ -37,7 +37,7 @@ global
         unidad;
     end = 65536 dup (1, 0);
     fondo;
-    
+
 
 begin
     fpgMenus=load_fpg("fpg/sau2menu.fpg");
@@ -165,8 +165,7 @@ begin
 
         pulsado=0;
     end
-
-end;
+end
 
 /**
   Pone un array de textos en pantalla
@@ -347,6 +346,7 @@ begin
     botonTerreno(64,690,1,&terrenoPoner);
     botonTerreno(128,690,2,&terrenoPoner);
     botonTerreno(192,690,3,&terrenoPoner);
+    botonTerreno(256,690,11,&terrenoPoner);
 
     fade_on();
     while(not key(_esc))
@@ -355,7 +355,7 @@ begin
             update=true;            
             frame(300);            
         end
-        
+
         if(key(_left) and scroll.x0>0 )
             scroll[0].x0 -= 64;
             update=true;
@@ -364,10 +364,10 @@ begin
 
         if(key(_down) and scroll.y0<15360)
             scroll[0].y0 += 64;
-            update=true;            
-            frame(300);            
+            update=true;
+            frame(300);
         end
-        
+
         if(key(_up) and scroll.y0>0 )
             scroll[0].y0 -= 64;
             update=true;
