@@ -9,6 +9,8 @@ const
     MOUSEBASE=200;
     COPYRIGHT="V 0.1  -  (c) 2020 Julio A. Garcia Lopez";
 
+    MAP_MINIMAPA=400;
+
     NADA=0;
     NUEVOMAPA=1;
     CARGARMAPA=2;
@@ -32,11 +34,13 @@ global
         ""
     ;
 
-    struct mapa[65536]
+    struct mapa[16384]
         terreno;
         unidad;
-    end = 65536 dup (1, 0);
+    end = 16384 dup (1, 0);
     fondo;
+
+    coloresMiniMapa[]=37,119,56,32;
 
 
 begin
@@ -282,7 +286,7 @@ private
 begin
     from i = 0 to 16; // Filas
         from j = 0 to 16; // Columnas
-            map_put(fpgTerreno, 99, mapa[(y+i)*256+(x+j)].terreno, j*64, i*64);
+            map_put(fpgTerreno, 99, mapa[(y+i)*128+(x+j)].terreno, j*64, i*64);
         end
     end
     refresh_scroll(0);
@@ -294,25 +298,10 @@ end
 */
 function putTerrain(x,y,terrain)
 begin
-    mapa [ y*256+x ].terreno = terrain;
+    mapa [ y*128+x ].terreno = terrain;
+    map_put_pixel(fpgMenus,MAP_MINIMAPA,x,y,coloresMiniMapa[terrain-1]);
 end
 
-/**
-Pinta el area de los controles, por lo demas no hace nada
-*/
-process areaControles()
-begin
-    file=fpgMenus;
-    graph=4;
-    x=512;
-    y=384;
-    z=-90;
-
-    while(not key(_esc))
-        frame;
-    end
-
-end
 
 /**
    Proceso principal del editor
@@ -328,57 +317,58 @@ private
     terrenoPoner=3;
 
 begin
+    put_screen(fpgMenus,4);
     putTiles(0,0);
-    areaControles();
+    //areaControles();
 
 
-    txtX=write_int(fntMenus,15,750,3,&tx);
-    txtY=write_int(fntMenus,65,750,3,&ty);
+    txtX=write_int(fntMenus,15,750,3,&mouse.x);
+    txtY=write_int(fntMenus,65,750,3,&mouse.y);
 
-    define_region(1,0,0,1024,600);
+    define_region(1,20,10,1014,626);
     start_scroll(0,fpgTerreno,98,99,1,0);
 
     file=fpgEdit;
     graph=1;
     //ctype=c_scroll;
 
-
+    minimapa();
     botonTerreno(64,690,1,&terrenoPoner);
     botonTerreno(128,690,2,&terrenoPoner);
     botonTerreno(192,690,3,&terrenoPoner);
-    botonTerreno(256,690,11,&terrenoPoner);
+    botonTerreno(256,690,4,&terrenoPoner);
 
     fade_on();
     while(not key(_esc))
-        if(key(_right) and scroll.x0<15360)
+        if((key(_right) or mouse.x>1004) and scroll.x0<15360)
             scroll[0].x0 += 64;
-            update=true;            
-            frame(300);            
+            update=true;
+            frame;
         end
 
-        if(key(_left) and scroll.x0>0 )
+        if((key(_left) or mouse.x<20) and scroll.x0>0 )
             scroll[0].x0 -= 64;
             update=true;
-            frame(300);
+            frame;
         end
 
-        if(key(_down) and scroll.y0<15360)
+        if((key(_down) or mouse.y>748) and scroll.y0<15360)
             scroll[0].y0 += 64;
             update=true;
-            frame(300);
+            frame;
         end
 
-        if(key(_up) and scroll.y0>0 )
+        if((key(_up) or mouse.y<20) and scroll.y0>0 )
             scroll[0].y0 -= 64;
             update=true;
-            frame(300);
+            frame;
         end
 
         if(mouse.y<600)
             tmp = mouse.x;
-            x= tmp - (tmp mod 64);
+            x= 20 + tmp - (tmp mod 64);
             tmp = mouse.y;
-            y= tmp - (tmp mod 64);
+            y= 10 + tmp - (tmp mod 64);
 
             tx=(x+scroll.x0)/64;
             ty=(y+scroll.y0)/64;
@@ -404,8 +394,21 @@ begin
     delete_text(txtY);
     stop_scroll(0);
     signal(type botonTerreno,s_kill);
-    signal(type areaControles,s_kill);
+//    signal(type areaControles,s_kill);
 end
+
+process minimapa()
+begin
+    file=fpgMenus;
+    graph=MAP_MINIMAPA;
+    x=950;
+    y=704;
+    size=80;
+    loop
+        frame;
+    end
+end
+
 
 /**
 Selecciona el terreno a poner en el mapa
