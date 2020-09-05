@@ -20,6 +20,7 @@ global
     fpgMenus;
     fpgEdit;
     fpgTerreno;
+    fpgUnits;
 
     fntMenus;
     fntMediana;
@@ -34,24 +35,25 @@ global
         ""
     ;
 
-    struct mapa[16384]
+    // Guarda el terreno como se guardara en el mapa
+    struct mapa[128,128]
         terreno;
         unidad;
     end = 16384 dup (1, 0);
+
+    // Mantiene la lista de procesos en cada coordenada
+    unidades[128,128] = 16384 dup (0);
+    creepers[]= 999,1;
+
     fondo;
 
     coloresMiniMapa[]=37,119,56,32;
-
-    struct creeper[1]
-        startGraph;
-        endGraph;
-    end = 1,4,0,0;
-
 
 begin
     fpgMenus=load_fpg("fpg/sau2menu.fpg");
     fpgEdit=load_fpg("fpg/sau2edit.fpg");
     fpgTerreno=load_fpg("fpg/terrain.fpg");
+    fpgUnits=load_fpg("fpg/units.fpg");
     fntMenus=load_fnt("fnt/sauron.fnt");
     fntMediana=load_fnt("fnt/sauronm.fnt");
     set_mode(m1024x768);
@@ -110,7 +112,9 @@ begin
         time++;
         frame;
     end;
+
     fade_off();
+
     while(fading)
         frame;
     end;
@@ -141,10 +145,10 @@ begin
 
         idSauron = sauronMenu();
         txtCopyright = write(fntMenus,1020,760,5,COPYRIGHT);
-        botonMenu(512, 500, "Nuevo Mapa", NUEVOMAPA, &pulsado);
-        botonMenu(512, 570, "Cargar Mapa", CARGARMAPA, &pulsado);
-        botonMenu(512, 640, "Ver Creditos", VERCREDITOS, &pulsado);
-        botonMenu(512, 710, "Salir", SALIR, &pulsado);
+        botonMenu(512, 450, "Nuevo Mapa", NUEVOMAPA, &pulsado);
+        botonMenu(512, 520, "Cargar Mapa", CARGARMAPA, &pulsado);
+        botonMenu(512, 590, "Ver Creditos", VERCREDITOS, &pulsado);
+        botonMenu(512, 640, "Salir", SALIR, &pulsado);
 
         while(pulsado == 0)
             frame;
@@ -291,7 +295,7 @@ private
 begin
     from i = 0 to 16; // Filas
         from j = 0 to 16; // Columnas
-            map_put(fpgTerreno, 99, mapa[(y+i)*128+(x+j)].terreno, j*64, i*64);
+            map_put(fpgTerreno, 99, mapa[y+i,x+j].terreno, j*64, i*64);
         end
     end
     refresh_scroll(0);
@@ -303,8 +307,25 @@ end
 */
 function putTerrain(x,y,terrain)
 begin
-    mapa [ y*128+x ].terreno = terrain;
+    mapa[ y,x ].terreno = terrain;
     map_put_pixel(fpgMenus,MAP_MINIMAPA,x,y,coloresMiniMapa[terrain-1]);
+end
+
+/**
+	Pone una unidad en el mapa
+*/
+function putUnit(x,y,typeOfUnit)
+begin
+    typeOfUnit *= -1;
+    mapa[ y,x ].unidad = typeOfUnit;
+
+    if( unidades[y,x] )
+        signal(unidades[y,x], s_kill);
+    end
+
+    if(typeOfUnit>0)
+        unidades[ y,x ] = creeper( x, y, typeOfUnit );
+    end
 end
 
 
@@ -343,6 +364,9 @@ begin
     botonTerreno(192,690,3,&terrenoPoner);
     botonTerreno(256,690,4,&terrenoPoner);
 
+    botonCreeper(384,690, 0,&terrenoPoner);
+    botonCreeper(448,690,-1,&terrenoPoner);
+
     fade_on();
     while(not key(_esc))
         if((key(_right) or mouse.x>1004) and scroll.x0<15360)
@@ -380,7 +404,12 @@ begin
 
             if(mouse.left)
                 frame(300);
-                putTerrain(tx,ty,terrenoPoner);
+                if(terrenoPoner > 0)
+                    putTerrain(tx,ty,terrenoPoner);
+                else
+                    putUnit(tx,ty,terrenoPoner);
+                end
+
                 update=true;
             end
         end
@@ -399,6 +428,8 @@ begin
     delete_text(txtY);
     stop_scroll(0);
     signal(type botonTerreno,s_kill);
+	signal(type botonCreeper,s_kill);
+	signal(type creeper,s_kill);
 //    signal(type areaControles,s_kill);
 end
 
@@ -436,7 +467,41 @@ begin
     end
 end
 
+/**
+Pone unidades en el mapa
+*/
+process botonCreeper(x,y,mode, pointer creeperPoner)
+begin
+    graph = creepers[-mode];
+    file = fpgUnits;
+    z =- 91;
+
+    loop
+        if( *creeperPoner != mode )
+            flags = 4;
+        else
+            flags = 0;
+        end
+
+        if( collision(type mouse) and mouse.left )
+            *creeperPoner=mode;
+        end
+
+        frame;
+    end
+end
+
 
 process creeper(x,y,mode)
 begin
+    ctype = c_scroll;
+    file = fpgUnits;
+    x *= 64;
+    y *= 64;
+    graph = creepers[mode];
+
+    loop
+        frame;
+    end;
+
 end;
