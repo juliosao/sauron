@@ -42,6 +42,11 @@ global
 
     coloresMiniMapa[]=37,119,56,32;
 
+    struct creeper[1]
+        startGraph;
+        endGraph;
+    end = 1,4,0,0;
+
 
 begin
     fpgMenus=load_fpg("fpg/sau2menu.fpg");
@@ -432,3 +437,6 @@ begin
 end
 
 
+process creeper(x,y,mode)
+begin
+end;

@@ -3,3 +3,5 @@ modules
 *.dll
 *.exe
 *.gbc
+*.so
+editor
