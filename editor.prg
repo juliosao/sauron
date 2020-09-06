@@ -10,6 +10,7 @@ const
     COPYRIGHT="V 0.1  -  (c) 2020 Julio A. Garcia Lopez";
 
     MAP_MINIMAPA=400;
+    MAP_MINIPANTALLA=401;
 
     NADA=0;
     NUEVOMAPA=1;
@@ -148,7 +149,7 @@ begin
         botonMenu(512, 450, "Nuevo Mapa", NUEVOMAPA, &pulsado);
         botonMenu(512, 520, "Cargar Mapa", CARGARMAPA, &pulsado);
         botonMenu(512, 590, "Ver Creditos", VERCREDITOS, &pulsado);
-        botonMenu(512, 640, "Salir", SALIR, &pulsado);
+        botonMenu(512, 660, "Salir", SALIR, &pulsado);
 
         while(pulsado == 0)
             frame;
@@ -240,46 +241,7 @@ begin
 
 end
 
-/**
-   Pone un boton en pantalla
-   Parametros:
-       x,y: Coordenadas
-       texto: Texto a poner
-       tag: Id del boton
-       dst: Puntero a la variable donde volcar el Id cuando el boton se pulse
-   Notas:
-       Cuando el boton es pulsado, se pone en dst el valor de tag.
-       Si en dst, en cualquier momento se pone cualquier valor distinto de 0, el bot�n finalizar� su ejecuci�n
-*/
-process botonMenu(x,y,texto,tag,pointer dst)
-private
-    status=0;
-    txtId;
-begin
-    file=fpgMenus;
-    graph=300;
-    txtId=write(fntMenus,x,y,4,texto);
 
-    while(*dst == 0)
-        frame;
-        if(collision(type mouse))
-            if(mouse.left)
-                graph = 301;
-            else
-                if( graph==301 )
-                    graph = 300;
-                    *dst=tag;
-                    frame;
-                end
-            end
-        else
-            graph=300;
-        end
-
-    end
-
-    delete_text(txtId);
-end
 
 
 /**
@@ -293,13 +255,18 @@ private
     i;
     j;
 begin
-    from i = 0 to 16; // Filas
-        from j = 0 to 16; // Columnas
+    if(x+16 > 126)
+        x=111;
+    end;
+    if(y+8 > 126)
+        y=119;
+    end;
+    from i = 0 to 10; // Filas
+        from j=0 to 16; // Columnas
             map_put(fpgTerreno, 99, mapa[y+i,x+j].terreno, j*64, i*64);
         end
     end
     refresh_scroll(0);
-    //put_screen(fpgTerreno,99);
 end
 
 /**
@@ -312,7 +279,7 @@ begin
 end
 
 /**
-	Pone una unidad en el mapa
+    Pone una unidad en el mapa
 */
 function putUnit(x,y,typeOfUnit)
 begin
@@ -348,10 +315,10 @@ begin
     //areaControles();
 
 
-    txtX=write_int(fntMenus,15,750,3,&mouse.x);
-    txtY=write_int(fntMenus,65,750,3,&mouse.y);
+    txtX=write_int(fntMenus,15,750,3,&tx);
+    txtY=write_int(fntMenus,65,750,3,&ty);
 
-    define_region(1,20,10,1014,626);
+    define_region(1,10,20,1004,606);
     start_scroll(0,fpgTerreno,98,99,1,0);
 
     file=fpgEdit;
@@ -359,6 +326,7 @@ begin
     //ctype=c_scroll;
 
     minimapa();
+    miniPantalla(&scroll[0].x0,&scroll[0].y0);
     botonTerreno(64,690,1,&terrenoPoner);
     botonTerreno(128,690,2,&terrenoPoner);
     botonTerreno(192,690,3,&terrenoPoner);
@@ -369,7 +337,7 @@ begin
 
     fade_on();
     while(not key(_esc))
-        if((key(_right) or mouse.x>1004) and scroll.x0<15360)
+        if((key(_right) or mouse.x>1004) and scroll.x0<7296)
             scroll[0].x0 += 64;
             update=true;
             frame;
@@ -381,7 +349,7 @@ begin
             frame;
         end
 
-        if((key(_down) or mouse.y>748) and scroll.y0<15360)
+        if((key(_down) or mouse.y>748) and scroll.y0<7296)
             scroll[0].y0 += 64;
             update=true;
             frame;
@@ -428,23 +396,88 @@ begin
     delete_text(txtY);
     stop_scroll(0);
     signal(type botonTerreno,s_kill);
-	signal(type botonCreeper,s_kill);
-	signal(type creeper,s_kill);
+    signal(type botonCreeper,s_kill);
+    signal(type creeper,s_kill);
+    signal(type minimapa,s_kill);
+    signal(type minipantalla,s_kill);
 //    signal(type areaControles,s_kill);
 end
 
+/**
+    Pone el minimapa
+*/
 process minimapa()
 begin
     file=fpgMenus;
     graph=MAP_MINIMAPA;
-    x=950;
-    y=704;
+    x=886;
+    y=640;
     size=80;
     loop
         frame;
     end
 end
 
+/**
+    Pinta en el minimapa la region que se ve por pantalla
+    Parametros:
+        tx,ty: Casillas iniciales donde esta situado el scroll
+*/
+process miniPantalla(pointer tx,pointer ty)
+begin
+    size=80;
+    z=-1;
+    file=fpgMenus;
+    graph=MAP_MINIPANTALLA;
+    x=886;
+    y=640;
+    loop
+        x=886+(*tx*80/6400);
+        y=640+(*ty*80/6400);
+        frame;
+    end
+end
+
+/**
+   Pone un boton en pantalla
+   Parametros:
+       x,y: Coordenadas
+       texto: Texto a poner
+       tag: Id del boton
+       dst: Puntero a la variable donde volcar el Id cuando el boton se pulse
+   Notas:
+       Cuando el boton es pulsado, se pone en dst el valor de tag.
+       Si en dst, en cualquier momento se pone cualquier valor distinto de 0, el bot�n finalizar� su ejecuci�n
+*/
+process botonMenu(x,y,texto,tag,pointer dst)
+private
+    status=0;
+    txtId;
+begin
+    file=fpgMenus;
+    graph=300;
+    txtId=write(fntMenus,x,y,4,texto);
+
+    while(*dst == 0)
+        frame;
+        if(collision(type mouse))
+            if(mouse.left)
+                graph = 301;
+            else
+                if( graph==301 )
+                    graph = 300;
+                    *dst=tag;
+                    frame;
+                end
+            end
+        else
+            graph=300;
+        end
+
+    end
+
+    delete_text(txtId);
+end
 
 /**
 Selecciona el terreno a poner en el mapa
